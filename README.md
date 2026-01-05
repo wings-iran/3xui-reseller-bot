@@ -16,8 +16,8 @@
 ### روش ۱: نصب خودکار (توصیه شده)
 
 ```bash
-# کلون کردن رپوزیتوری[
-https://github.com/wings-iran/3xui-reseller-bot.git
+# کلون کردن رپوزیتوری
+git clone https://github.com/wings-iran/3xui-reseller-bot.git
 cd 3xui-reseller-bot
 
 # اجرای اسکریپت نصب
@@ -35,7 +35,7 @@ cd 3xui-reseller-bot
 
 ```bash
 # کلون کردن رپوزیتوری
-https://github.com/wings-iran/3xui-reseller-bot.git
+git clone https://github.com/wings-iran/3xui-reseller-bot.git
 cd 3xui-reseller-bot
 
 # نصب وابستگی‌ها
