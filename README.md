@@ -18,7 +18,7 @@
 ```bash
 # کلون کردن رپوزیتوری
 git clone https://github.com/your-username/3xui-bot.git
-cd 3xui-bot
+cd 3xui-reseller-bot
 
 # اجرای اسکریپت نصب
 ./install.sh
@@ -27,7 +27,7 @@ cd 3xui-bot
 یا اگر قبلاً پوشه را دارید:
 
 ```bash
-cd 3xui-bot
+cd 3xui-reseller-bot
 ./install.sh
 ```
 
@@ -36,7 +36,7 @@ cd 3xui-bot
 ```bash
 # کلون کردن رپوزیتوری
 git clone https://github.com/your-username/3xui-bot.git
-cd 3xui-bot
+cd 3xui-reseller-bot
 
 # نصب وابستگی‌ها
 pip3 install -r requirements.txt
@@ -117,7 +117,7 @@ sudo journalctl -u 3xui-bot -n 50
 journalctl -u 3xui-bot -n 20
 
 # اجرای دستی برای تست
-cd /root/3xui-bot
+cd /root/3xui-reseller-bot
 python3 bot.py
 ```
 
