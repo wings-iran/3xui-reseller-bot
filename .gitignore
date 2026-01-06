@@ -1,0 +1,36 @@
+# فایل‌های تنظیمات محلی
+config/local.py
+
+# دیتابیس
+*.db
+data.db
+
+# فایل‌های Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# محیط مجازی
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# لاگ‌ها
+*.log
+
+# فایل‌های موقت
+*.tmp
+*.bak
+*~
+
+# فایل‌های سیستم
+.DS_Store
+Thumbs.db

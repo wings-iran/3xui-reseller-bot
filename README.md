@@ -15,6 +15,7 @@
 
 ### روش ۱: نصب خودکار (توصیه شده)
 
+#### نصب تعاملی:
 ```bash
 # کلون کردن رپوزیتوری
 git clone https://github.com/wings-iran/3xui-reseller-bot.git
@@ -24,12 +25,22 @@ cd 3xui-reseller-bot
 ./install.sh
 ```
 
-یا اگر قبلاً پوشه را دارید:
-
+#### نصب غیرتعاملی (با متغیرهای محیطی):
 ```bash
+# کلون کردن رپوزیتوری
+git clone https://github.com/wings-iran/3xui-reseller-bot.git
 cd 3xui-reseller-bot
+
+# اجرای اسکریپت نصب با متغیرهای محیطی
+BOT_TOKEN="your_bot_token" \
+ADMIN_ID="your_admin_id" \
+PANEL_URL="https://your-panel.com:2053" \
+PANEL_USERNAME="admin" \
+PANEL_PASSWORD="your_password" \
 ./install.sh
 ```
+
+**نکته:** اسکریپت می‌تواند هم به صورت root و هم به صورت کاربر عادی اجرا شود.
 
 ### روش ۲: نصب دستی
 

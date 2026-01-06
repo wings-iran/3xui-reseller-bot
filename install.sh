@@ -24,20 +24,32 @@ print_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-# چک کردن اینکه آیا اسکریپت با sudo اجرا شده
+# تشخیص کاربر فعلی
+CURRENT_USER=${SUDO_USER:-$USER}
+if [[ -z "$CURRENT_USER" ]]; then
+    CURRENT_USER=$(whoami)
+fi
+
+# اگر با root اجرا شده، از root استفاده می‌کنیم
 if [[ $EUID -eq 0 ]]; then
-   print_error "این اسکریپت نباید با sudo اجرا شود"
-   exit 1
+    CURRENT_USER="root"
+    SUDO_CMD=""
+else
+    SUDO_CMD="sudo"
 fi
 
 # گرفتن مسیر اسکریپت و پروژه
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$SCRIPT_DIR"
 
 # چک کردن آیا python3 نصب است
 if ! command -v python3 &> /dev/null; then
     print_error "Python3 نصب نیست. لطفاً ابتدا Python3 را نصب کنید:"
-    echo "sudo apt update && sudo apt install python3 python3-pip -y"
+    if [[ $EUID -eq 0 ]]; then
+        echo "apt update && apt install python3 python3-pip -y"
+    else
+        echo "sudo apt update && sudo apt install python3 python3-pip -y"
+    fi
     exit 1
 fi
 
@@ -53,66 +65,131 @@ cd "$SCRIPT_DIR"
 # ایجاد فایل تنظیمات محلی
 print_message "آماده‌سازی فایل تنظیمات..."
 
-if [[ ! -f "config.local.py" ]]; then
-    print_message "کپی کردن فایل تنظیمات نمونه..."
-    cp config.py config.local.py
-    print_success "فایل config.local.py ایجاد شد"
-else
-    print_warning "فایل config.local.py از قبل وجود دارد"
-fi
+CONFIG_DIR="$SCRIPT_DIR/config"
+LOCAL_CONFIG="$CONFIG_DIR/local.py"
+SAMPLE_CONFIG="$CONFIG_DIR/config.py"
 
-echo ""
-echo "⚠️  مرحله مهم: تنظیم فایل config.local.py"
-echo ""
-echo "لطفاً فایل config.local.py را با تنظیمات خود ویرایش کنید:"
-echo "  nano config.local.py"
-echo ""
-echo "تنظیمات مورد نیاز:"
-echo "  • BOT_TOKEN: توکن ربات از @BotFather"
-echo "  • SUDO_ADMIN_ID: آیدی عددی ادمین"
-echo "  • PANEL_URL: آدرس پنل 3X-UI"
-echo "  • PANEL_USERNAME: نام کاربری پنل"
-echo "  • PANEL_PASSWORD: رمز عبور پنل"
-echo ""
-
-# پرسیدن از کاربر برای ادامه
-while true; do
-    read -p "آیا فایل config.local.py را ویرایش کرده‌اید؟ (y/N): " -n 1 -r
-    echo ""
-    case $REPLY in
-        [Yy]* ) break;;
-        [Nn]* ) echo "لطفاً ابتدا فایل را ویرایش کنید."; exit 1;;
-        "" ) echo "لطفاً ابتدا فایل را ویرایش کنید."; exit 1;;
-        * ) echo "لطفاً y یا n وارد کنید.";;
-    esac
-done
-
-echo ""
-print_message "شروع نصب..."
-# چک کردن وجود فایل تنظیمات
-if [[ ! -f "config.local.py" ]]; then
-    print_error "فایل config.local.py یافت نشد! لطفاً ابتدا آن را ایجاد کنید."
+# اطمینان از وجود پوشه config
+if [[ ! -d "$CONFIG_DIR" ]]; then
+    print_error "پوشه config یافت نشد!"
     exit 1
 fi
+
+if [[ ! -f "$SAMPLE_CONFIG" ]]; then
+    print_error "فایل config/config.py یافت نشد!"
+    exit 1
+fi
+
+# ایجاد فایل local.py از نمونه
+if [[ ! -f "$LOCAL_CONFIG" ]]; then
+    print_message "کپی کردن فایل تنظیمات نمونه..."
+    cp "$SAMPLE_CONFIG" "$LOCAL_CONFIG"
+    print_success "فایل config/local.py ایجاد شد"
+else
+    print_warning "فایل config/local.py از قبل وجود دارد"
+    read -p "آیا می‌خواهید آن را بازنویسی کنید؟ (y/N): " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        cp "$SAMPLE_CONFIG" "$LOCAL_CONFIG"
+        print_success "فایل config/local.py بازنویسی شد"
+    fi
+fi
+
+echo ""
+echo "⚠️  مرحله مهم: تنظیم فایل config/local.py"
+echo ""
+
+# دریافت اطلاعات از کاربر
+print_message "دریافت اطلاعات مورد نیاز..."
+
+# دریافت توکن ربات (از متغیر محیطی یا از کاربر)
+if [[ -n "$BOT_TOKEN" ]]; then
+    print_message "استفاده از توکن از متغیر محیطی"
+else
+    read -p "توکن ربات تلگرام (از @BotFather): " BOT_TOKEN
+fi
+if [[ -z "$BOT_TOKEN" ]]; then
+    print_error "توکن ربات نمی‌تواند خالی باشد!"
+    exit 1
+fi
+
+# دریافت آیدی ادمین (از متغیر محیطی یا از کاربر)
+if [[ -n "$ADMIN_ID" ]]; then
+    print_message "استفاده از آیدی ادمین از متغیر محیطی"
+else
+    read -p "آیدی عددی ادمین تلگرام: " ADMIN_ID
+fi
+if [[ -z "$ADMIN_ID" ]] || ! [[ "$ADMIN_ID" =~ ^[0-9]+$ ]]; then
+    print_error "آیدی ادمین باید یک عدد باشد!"
+    exit 1
+fi
+
+# دریافت آدرس پنل (از متغیر محیطی یا از کاربر)
+if [[ -n "$PANEL_URL" ]]; then
+    print_message "استفاده از آدرس پنل از متغیر محیطی"
+else
+    read -p "آدرس پنل 3X-UI (مثال: https://panel.example.com:2053): " PANEL_URL
+fi
+if [[ -z "$PANEL_URL" ]]; then
+    print_error "آدرس پنل نمی‌تواند خالی باشد!"
+    exit 1
+fi
+
+# دریافت نام کاربری پنل (از متغیر محیطی یا از کاربر)
+if [[ -n "$PANEL_USERNAME" ]]; then
+    print_message "استفاده از نام کاربری پنل از متغیر محیطی"
+else
+    read -p "نام کاربری پنل (پیش‌فرض: admin): " PANEL_USERNAME
+    PANEL_USERNAME=${PANEL_USERNAME:-admin}
+fi
+PANEL_USERNAME=${PANEL_USERNAME:-admin}
+
+# دریافت رمز عبور پنل (از متغیر محیطی یا از کاربر)
+if [[ -n "$PANEL_PASSWORD" ]]; then
+    print_message "استفاده از رمز عبور پنل از متغیر محیطی"
+else
+    read -sp "رمز عبور پنل: " PANEL_PASSWORD
+    echo ""
+fi
+if [[ -z "$PANEL_PASSWORD" ]]; then
+    print_error "رمز عبور پنل نمی‌تواند خالی باشد!"
+    exit 1
+fi
+
+# به‌روزرسانی فایل config/local.py
+print_message "به‌روزرسانی فایل تنظیمات..."
+
+# محاسبه مسیر نسبی دیتابیس
+DB_PATH="$SCRIPT_DIR/data.db"
+
+# جایگزینی مقادیر در فایل config
+sed -i "s|BOT_TOKEN = \".*\"|BOT_TOKEN = \"$BOT_TOKEN\"|g" "$LOCAL_CONFIG"
+sed -i "s|SUDO_ADMIN_ID = .*|SUDO_ADMIN_ID = $ADMIN_ID|g" "$LOCAL_CONFIG"
+sed -i "s|PANEL_URL = \".*\"|PANEL_URL = \"$PANEL_URL\"|g" "$LOCAL_CONFIG"
+sed -i "s|PANEL_USERNAME = \".*\"|PANEL_USERNAME = \"$PANEL_USERNAME\"|g" "$LOCAL_CONFIG"
+sed -i "s|PANEL_PASSWORD = \".*\"|PANEL_PASSWORD = \"$PANEL_PASSWORD\"|g" "$LOCAL_CONFIG"
+sed -i "s|DATABASE_PATH = \".*\"|DATABASE_PATH = \"$DB_PATH\"|g" "$LOCAL_CONFIG"
+
+print_success "فایل تنظیمات به‌روزرسانی شد"
 
 # چک کردن پر بودن تنظیمات مهم
-if ! grep -q "BOT_TOKEN.*=" config.local.py || grep -q "BOT_TOKEN.*YOUR_BOT_TOKEN" config.local.py; then
-    print_error "BOT_TOKEN تنظیم نشده است. لطفاً config.local.py را ویرایش کنید."
+if grep -q "BOT_TOKEN.*YOUR_BOT_TOKEN" "$LOCAL_CONFIG" || grep -q "BOT_TOKEN.*=\"\"" "$LOCAL_CONFIG"; then
+    print_error "BOT_TOKEN تنظیم نشده است!"
     exit 1
 fi
 
-if ! grep -q "SUDO_ADMIN_ID.*=" config.local.py || grep -q "SUDO_ADMIN_ID.*123456789" config.local.py; then
-    print_error "SUDO_ADMIN_ID تنظیم نشده است. لطفاً config.local.py را ویرایش کنید."
+if grep -q "SUDO_ADMIN_ID.*123456789" "$LOCAL_CONFIG"; then
+    print_error "SUDO_ADMIN_ID تنظیم نشده است!"
     exit 1
 fi
 
-if ! grep -q "PANEL_URL.*=" config.local.py || grep -q "PANEL_URL.*your-panel.com" config.local.py; then
-    print_error "PANEL_URL تنظیم نشده است. لطفاً config.local.py را ویرایش کنید."
+if grep -q "PANEL_URL.*your-panel.com" "$LOCAL_CONFIG" || grep -q "PANEL_URL.*=\"\"" "$LOCAL_CONFIG"; then
+    print_error "PANEL_URL تنظیم نشده است!"
     exit 1
 fi
 
-if ! grep -q "PANEL_PASSWORD.*=" config.local.py || grep -q "PANEL_PASSWORD.*YOUR_PANEL_PASSWORD" config.local.py; then
-    print_error "PANEL_PASSWORD تنظیم نشده است. لطفاً config.local.py را ویرایش کنید."
+if grep -q "PANEL_PASSWORD.*YOUR_PANEL_PASSWORD" "$LOCAL_CONFIG" || grep -q "PANEL_PASSWORD.*=\"\"" "$LOCAL_CONFIG"; then
+    print_error "PANEL_PASSWORD تنظیم نشده است!"
     exit 1
 fi
 
@@ -120,52 +197,108 @@ print_success "فایل تنظیمات تأیید شد"
 
 # نصب وابستگی‌های پایتون
 print_message "نصب وابستگی‌های پایتون..."
-pip3 install -r requirements.txt
+if [[ $EUID -eq 0 ]]; then
+    pip3 install -r requirements.txt
+else
+    pip3 install --user -r requirements.txt || pip3 install -r requirements.txt
+fi
+
+if [[ $? -ne 0 ]]; then
+    print_error "خطا در نصب وابستگی‌ها!"
+    exit 1
+fi
+
+print_success "وابستگی‌ها با موفقیت نصب شدند"
 
 # ایجاد سرویس systemd
 print_message "ایجاد سرویس systemd..."
-sudo tee /etc/systemd/system/3xui-bot.service > /dev/null << EOF
+
+SERVICE_FILE="/etc/systemd/system/3xui-bot.service"
+
+# تعیین دستور sudo
+if [[ $EUID -eq 0 ]]; then
+    SUDO_PREFIX=""
+else
+    SUDO_PREFIX="sudo"
+fi
+
+cat > /tmp/3xui-bot.service << EOF
 [Unit]
 Description=3X-UI Telegram Bot
 After=network.target
 
 [Service]
 Type=simple
-User=$USER
-WorkingDirectory=$(pwd)
-ExecStart=$(which python3) $(pwd)/bot.py
+User=$CURRENT_USER
+WorkingDirectory=$SCRIPT_DIR
+ExecStart=$(which python3) $SCRIPT_DIR/bot.py
 Restart=always
 RestartSec=10
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+$SUDO_PREFIX mv /tmp/3xui-bot.service "$SERVICE_FILE"
+$SUDO_PREFIX chmod 644 "$SERVICE_FILE"
+
+print_success "سرویس systemd ایجاد شد"
+
 # فعال‌سازی و شروع سرویس
 print_message "فعال‌سازی سرویس..."
-sudo systemctl daemon-reload
-sudo systemctl enable 3xui-bot.service
-sudo systemctl start 3xui-bot.service
+$SUDO_PREFIX systemctl daemon-reload
+$SUDO_PREFIX systemctl enable 3xui-bot.service
+
+# تست اجرای ربات قبل از شروع سرویس
+print_message "تست اجرای ربات..."
+timeout 5 python3 bot.py > /tmp/bot_test.log 2>&1 &
+TEST_PID=$!
+sleep 3
+if ps -p $TEST_PID > /dev/null; then
+    kill $TEST_PID 2>/dev/null
+    print_success "تست اجرا موفق بود"
+else
+    print_warning "تست اجرا مشکل داشت، اما ادامه می‌دهیم..."
+    cat /tmp/bot_test.log 2>/dev/null || true
+fi
+
+# شروع سرویس
+print_message "شروع سرویس..."
+$SUDO_PREFIX systemctl start 3xui-bot.service
 
 # چک کردن وضعیت
 sleep 3
-if sudo systemctl is-active --quiet 3xui-bot.service; then
+if $SUDO_PREFIX systemctl is-active --quiet 3xui-bot.service; then
     print_success "ربات با موفقیت نصب و اجرا شد!"
     echo ""
     echo "======================================"
     echo "✅ نصب تکمیل شد!"
     echo ""
     echo "🔧 دستورات مفید:"
-    echo "  systemctl status 3xui-bot    # وضعیت ربات"
-    echo "  systemctl restart 3xui-bot   # ریستارت ربات"
-    echo "  systemctl stop 3xui-bot      # توقف ربات"
-    echo "  journalctl -u 3xui-bot -f    # مشاهده لاگ زنده"
+    if [[ $EUID -eq 0 ]]; then
+        echo "  systemctl status 3xui-bot    # وضعیت ربات"
+        echo "  systemctl restart 3xui-bot   # ریستارت ربات"
+        echo "  systemctl stop 3xui-bot      # توقف ربات"
+        echo "  journalctl -u 3xui-bot -f    # مشاهده لاگ زنده"
+    else
+        echo "  sudo systemctl status 3xui-bot    # وضعیت ربات"
+        echo "  sudo systemctl restart 3xui-bot   # ریستارت ربات"
+        echo "  sudo systemctl stop 3xui-bot      # توقف ربات"
+        echo "  sudo journalctl -u 3xui-bot -f     # مشاهده لاگ زنده"
+    fi
     echo ""
     echo "📊 آمار:"
-    sudo systemctl status 3xui-bot.service --no-pager | grep -E "(Active|Main PID|Memory|CPU)"
+    $SUDO_PREFIX systemctl status 3xui-bot.service --no-pager | grep -E "(Active|Main PID|Memory|CPU)" || true
     echo ""
     echo "======================================"
 else
     print_error "ربات اجرا نشد. لطفاً لاگ‌ها را چک کنید:"
-    echo "journalctl -u 3xui-bot -n 20"
+    if [[ $EUID -eq 0 ]]; then
+        echo "journalctl -u 3xui-bot -n 20"
+    else
+        echo "sudo journalctl -u 3xui-bot -n 20"
+    fi
+    exit 1
 fi

@@ -13,7 +13,9 @@ PANEL_USERNAME = "admin"  # نام کاربری پنل
 PANEL_PASSWORD = "YOUR_PANEL_PASSWORD"  # رمز عبور پنل
 
 # تنظیمات دیتابیس
-DATABASE_PATH = "/root/3xui-bot/data.db"
+import os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATABASE_PATH = os.path.join(BASE_DIR, "data.db")
 
 # تنظیمات زمان‌بندی
 TRAFFIC_CHECK_INTERVAL_HOURS = 9  # هر 9 ساعت چک شود
