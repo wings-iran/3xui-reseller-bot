@@ -27,11 +27,10 @@ cd 3xui-reseller-bot
 
 #### نصب غیرتعاملی (با متغیرهای محیطی):
 ```bash
-# کلون کردن رپوزیتوری
 git clone https://github.com/wings-iran/3xui-reseller-bot.git
 cd 3xui-reseller-bot
 
-# اجرای اسکریپت نصب با متغیرهای محیطی
+
 BOT_TOKEN="your_bot_token" \
 ADMIN_ID="your_admin_id" \
 PANEL_URL="https://your-panel.com:2053" \
